@@ -155,7 +155,7 @@ client.on('message', message => {
     txtNoPunct = txtNoPunct.replaceAll("?", " ");
     txtNoPunct = txtNoPunct.replaceAll("!", " ");
     txtNoPunct = txtNoPunct.replaceAll("'", "");
-    txtNoPunct = txtNoPunct.replaceAll(`"`, "");
+    txtNoPunct = txtNoPunct.replaceAll('"', "");
     txtNoPunct = txtNoPunct.replaceAll("  ", " ");
     txtNoPunct = txtNoPunct.trim();
 
@@ -193,12 +193,6 @@ client.on('message', message => {
             mentionedUsernames.push(user.username);
         });
 
-        // Determine whether *we* were mentioned
-        let timbotWasMentioned = (txtWords.indexOf("timbot") >= 0 || mentionedUsernames.indexOf("Timbot") >= 0);
-        let elizaWasMentioned = (txtWords.indexOf("eliza") >= 0);
-        let elizaWasOn = ElizaHelper.isActiveForUser(message.author);
-        let elizaModeOn = (elizaWasMentioned || elizaWasOn);
-
         // Anti spam timer
         let lastTextReply = lastTextReplyAt || 0;
         let minutesSinceLastTextReply = Math.floor(((Date.now() - lastTextReply) / 1000) / 60);
@@ -226,109 +220,6 @@ client.on('message', message => {
             return true;
         };
 
-        // Nightbot / !sellout helper
-        if (txtLower === "!sellout" || (timbotWasMentioned && txtLower.indexOf("!sellout") >= 0)) {
-            // Do a new sellout (either the "!sellout" command was used or someone mentioned "timbot" and "!sellout" together)
-            message.channel.startTyping();
-
-            selloutTimeout = setTimeout(() => {
-                doSelloutMessage(message.channel);
-            }, 3500);
-
-            return;
-        }
-
-        let relationshipPlusEmoji = getServerEmoji("timPlus", false);
-        let relationshipMinusEmoji = getServerEmoji("timMinus", false);
-
-        // Timbot mentions
-        if (timbotWasMentioned || elizaWasMentioned) {
-            // --- Eliza start ---
-            if (elizaModeOn) {
-                let isEnding = txtNoPunct.indexOf("goodbye") >= 0 || txtNoPunct.indexOf("good bye") >= 0;
-                let isStarting = !isEnding && !elizaWasOn;
-
-                message.channel.startTyping();
-
-                if (isEnding) {
-                    ElizaHelper.end(message);
-                } else if (isStarting) {
-                    ElizaHelper.start(message);
-                } else {
-                    ElizaHelper.reply(message);
-                }
-
-                return;
-            }
-            // --- Eliza eof ---
-
-            let isNegative = (txtWords.indexOf("not") >= 0 || txtLower.indexOf("n't") >= 0 ||
-                txtWords.indexOf("bad") >= 0);
-
-            // General mention -----------------------------------------------------------------------------------------
-
-                if (cleverbot) {
-                    message.channel.startTyping();
-
-                    let cleverInput = message.cleanContent;
-                    console.log(cleverInput, message.member.user.discriminator);
-
-                    cleverbot.say(cleverInput, message.member.user.discriminator)
-                        .then((cleverOutput) => {
-                            console.log(cleverOutput);
-                            if (cleverOutput && cleverOutput.length) {
-                                cleverOutput = cleverOutput.replaceAll("cleverbot", "Timbot");
-
-                                fnTextReply(cleverOutput, true, true);
-                            } else {
-                                // No or blank response from CB
-                                message.react("🤷");
-                                message.channel.stopTyping(true);
-                            }
-                        })
-                        .catch((err) => {
-                            // Err, no CB response
-                            console.log(err);
-                            message.react("❌");
-                            message.channel.stopTyping(true);
-                        });
-                }
-        }
-
-        // Food use integration
-        if (txtLower.indexOf("food use") >= 0 || txtLower.indexOf("food dip") >= 0 ||
-            txtLower.indexOf("fooddip") >= 0 || txtLower.indexOf("fooduse") >= 0) {
-            let bobmoji = getServerEmoji("BOB_EATS");
-
-            if (bobmoji) {
-                message.react(bobmoji);
-            }
-        }
-
-        // Easter egg: meme
-        if (txtLower.indexOf("loss") >= 0) {
-            let lossEmoji = getServerEmoji("THINK_ABOUT_LOSS");
-
-            if (lossEmoji) {
-                message.react(lossEmoji);
-            }
-        }
-
-        if (txtLower.indexOf("meme") >= 0) {
-            if (relationshipMinusEmoji) {
-                message.react(relationshipMinusEmoji);
-            }
-        }
-
-        // Easter egg: timOh reaction
-        if (txtNoPunct === "oh" || txtLower.startsWith("oh.")) {
-            let ohEmoji = getServerEmoji("timOh", false);
-
-            if (ohEmoji) {
-                message.react(ohEmoji);
-            }
-        }
-
         // Gay
         let gayWords = ["gay", "queer", "homo", "pride"];
 
@@ -340,61 +231,11 @@ client.on('message', message => {
             }
         }
 
-        // Easter egg: timGuest420 reaction
-        if (txtWords.indexOf("grass") >= 0 || txtLower.indexOf("420") >= 0
-            || txtWords.indexOf("kush") >= 0 || txtWords.indexOf("weed") >= 0
-            || txtLower.indexOf("aunt mary") >= 0 || txtWords.indexOf("ganja") >= 0
-            || txtWords.indexOf("herb") >= 0 || txtWords.indexOf("joint") >= 0
-            || txtWords.indexOf("juja") >= 0 || txtLower.indexOf("mary jane") >= 0
-            || txtWords.indexOf("reefer") >= 0 || txtWords.indexOf("doobie") >= 0
-            || txtWords.indexOf("cannabis") >= 0 || txtLower.indexOf("magic brownie") >= 0
-            || txtWords.indexOf("bong") >= 0 || txtNoPunct.indexOf("devils lettuce") >= 0
-            || txtLower.indexOf("marijuana") >= 0 || txtLower.indexOf("dime bag") >= 0
-            || txtWords.indexOf("dimebag") >= 0 || txtWords.indexOf("toke") >= 0
-            || txtWords.indexOf("blaze") >= 0 || txtWords.indexOf("blunt") >= 0
-        ) {
-            let fourtwentyEmoji = getServerEmoji("timGuest420", false);
-
-            if (fourtwentyEmoji) {
-                message.react(fourtwentyEmoji);
-            }
+        if (txtWords.indexOf('ping') == 0) {
+            message.react("✅");
+            message.channel.send("pong");
         }
 
-        // 4head
-        if (txtWords.indexOf('4head') >= 0) {
-            let fourheadEmoji = getServerEmoji("4head", false);
-
-            if (fourheadEmoji) {
-                message.react(fourheadEmoji);
-            }
-        }
-
-        // hahaa
-        if (txtWords.indexOf('hahaa') >= 0) {
-            let hahaaEmoji = getServerEmoji("hahaa", false);
-
-            if (hahaaEmoji) {
-                message.react(hahaaEmoji);
-            }
-        }
-
-        // beat saber
-        if (txtWords.indexOf('beatsaber') >= 0 || txtLower.indexOf('beat saber') >= 0) {
-            let beatsaberEmoji = getServerEmoji("beatsaber", false);
-
-            if (beatsaberEmoji) {
-                message.react(beatsaberEmoji);
-            }
-        }
-
-        // clap
-        if (txtWords.indexOf('clap') >= 0) {
-            let clapEmoji = getServerEmoji("ClapClap", false);
-
-            if (clapEmoji) {
-                message.react(clapEmoji);
-            }
-        }
     } catch (e) {
         console.error('Message processing / dumb joke error:', e, `<<< ${e.toString()} >>>`);
     }
@@ -475,6 +316,8 @@ class StreamActivity {
 
 let liveMessageDb = new MiniDb('live-messages');
 let messageHistory = liveMessageDb.get("history") || { };
+let oldGameName = '';
+let newGameName = '';
 
 TwitchMonitor.onChannelLiveUpdate((streamData) => {
     const isLive = streamData.type === "live";
@@ -490,6 +333,21 @@ TwitchMonitor.onChannelLiveUpdate((streamData) => {
     // Generate message
     const msgFormatted = `${streamData.user_name} went live on Twitch!`;
     const msgEmbed = LiveEmbed.createForStream(streamData);
+    if (!isLive) {
+        console.log("[GAMECHANGE] resetting oldGameName (the stream has ended)");
+        oldGameName = '';
+        for (let i = 0; i < targetChannels.length; i++) {
+            const discordChannel = targetChannels[i];
+            discordChannel.send("⏹️ the stream has ended!");
+        }
+    } else {
+        if (streamData.game && streamData.game.name) {
+            console.log("[GAMECHANGE] setting newGameName to " + streamData.game.name);
+            newGameName = streamData.game.name;
+        } else {
+            newGameName = '';
+        }
+    }
 
     // Broadcast to all target channels
     let anySent = false;
@@ -588,6 +446,22 @@ TwitchMonitor.onChannelLiveUpdate((streamData) => {
         }
     }
 
+    console.log("[GAMECHANGE] oldGameName: " + oldGameName);
+    console.log("[GAMECHANGE] newGameName: " + newGameName);
+    if (isLive && newGameName) {
+        if (oldGameName != newGameName) {
+            for (let i = 0; i < targetChannels.length; i++) {
+                const discordChannel = targetChannels[i];
+                if (!oldGameName) {
+                    discordChannel.send("▶️ " + streamData.user_name + " started streaming " + newGameName + '!');
+                } else {
+                    discordChannel.send("⏩ " + streamData.user_name + " changed game to " + newGameName + '!');
+                }
+            }
+        }
+        oldGameName = newGameName;
+    }
+
     liveMessageDb.put('history', messageHistory);
     return anySent;
 });
@@ -595,6 +469,8 @@ TwitchMonitor.onChannelLiveUpdate((streamData) => {
 TwitchMonitor.onChannelOffline((streamData) => {
     // Update activity
     StreamActivity.setChannelOffline(streamData);
+    console.log("[GAMECHANGE] resetting oldGameName (the stream has ended)");
+    oldGameName = '';
 });
 
 // --- Common functions ------------------------------------------------------------------------------------------------
